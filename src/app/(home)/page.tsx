@@ -10,6 +10,12 @@ interface Project {
   name: string
 }
 
+// Define the type for the project data returned from the API
+interface ApiProject {
+  _id: string
+  name?: string // Optional because the name might not always be present
+}
+
 export default function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [projects, setProjects] = useState<Project[]>([])
@@ -29,10 +35,10 @@ export default function Home() {
 
           if (!response.ok) throw new Error("Failed to fetch projects")
 
-          const data = await response.json()
+          const data: ApiProject[] = await response.json()
 
           // Map the data to the expected format
-          const formattedProjects = data.map((project: any) => ({
+          const formattedProjects = data.map((project: ApiProject) => ({
             _id: project._id,
             name: project.name || "Untitled Project",
           }))

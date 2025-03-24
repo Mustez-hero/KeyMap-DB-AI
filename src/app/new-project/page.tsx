@@ -8,6 +8,15 @@ import { Avatar, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import TextareaAutosize from "react-textarea-autosize"
 
+interface Project {
+  _id: string;
+  name: string;
+  schema?: {
+    messages: Array<{ role: string; content: string }>;
+  };
+  pendingResponse?: boolean;
+}
+
 export default function NewProject() {
   const [inputValue, setInputValue] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -15,7 +24,7 @@ export default function NewProject() {
   const [userMessage, setUserMessage] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [projects, setProjects] = useState<any[]>([])
+  const [projects, setProjects] = useState<Project[]>([]) // Fixed: Replaced `any[]` with `Project[]`
   const router = useRouter()
 
   // Fetch all projects
@@ -237,7 +246,7 @@ export default function NewProject() {
         {!showUserMessage ? (
           <div className="text-center space-y-2 mt-80">
             <h1 className="text-2xl font-medium text-[#000000]">
-              Let's design your <span className="italic">database schema</span>.
+              Let&rsquo;s design your <span className="italic">database schema</span>.
             </h1>
             <p className="text-xl text-[#7d8187]">What kind of application are you building?</p>
           </div>

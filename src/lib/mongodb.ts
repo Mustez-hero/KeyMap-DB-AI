@@ -9,27 +9,20 @@ const uri = process.env.MONGODB_URI;
 let client: MongoClient;
 let clientPromise: Promise<MongoClient>;
 
-// Extend global type to include _mongoClientPromise
+// Extend the global object to store the MongoDB client promise
 declare global {
-  namespace NodeJS {
-    interface Global {
-      _mongoClientPromise?: Promise<MongoClient>;
-    }
-  }
+  var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 
-// Use `globalThis` instead of `global`
-const globalWithMongo = global as typeof global & { _mongoClientPromise?: Promise<MongoClient> };
-
 if (process.env.NODE_ENV === "development") {
-  // In development mode, use a global variable to preserve connection during hot reloads
-  if (!globalWithMongo._mongoClientPromise) {
+  // Use a global variable to preserve the MongoDB connection during hot reloads in development
+  if (!globalThis._mongoClientPromise) {
     client = new MongoClient(uri);
-    globalWithMongo._mongoClientPromise = client.connect();
+    globalThis._mongoClientPromise = client.connect();
   }
-  clientPromise = globalWithMongo._mongoClientPromise;
+  clientPromise = globalThis._mongoClientPromise;
 } else {
-  // In production, create a new connection
+  // In production, create a new MongoDB connection
   client = new MongoClient(uri);
   clientPromise = client.connect();
 }

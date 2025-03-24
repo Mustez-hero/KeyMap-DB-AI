@@ -13,10 +13,25 @@ interface Message {
   content: string;
 }
 
+interface Column {
+  name: string;
+  type: string;
+  constraints?: string[];
+}
+
+interface Table {
+  name: string;
+  columns: Column[];
+}
+
+interface Schema {
+  tables: Table[];
+}
+
 interface DisplayMessage {
   role: "user" | "assistant";
   content: string | object;
-  schema?: any[];
+  schema?: Schema; // Replace `any[]` with `Schema`
   isEditing?: boolean;
 }
 
@@ -38,7 +53,7 @@ export default function ProjectPage() {
   const [displayMessages, setDisplayMessages] = useState<DisplayMessage[]>([]);
   const [projectName, setProjectName] = useState("Database Schema");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [currentSchema, setCurrentSchema] = useState<any[]>([]);
+  const [currentSchema, setCurrentSchema] = useState<Schema>({ tables: [] }); // Replace `any[]` with `Schema`
   const [pendingResponse, setPendingResponse] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -103,22 +118,23 @@ export default function ProjectPage() {
 
   // Process messages to extract schema data
   const processMessages = (msgs: Message[]): DisplayMessage[] => {
-    let latestSchema: any[] = [];
+    let latestSchema: Schema = { tables: [] };
 
     const processed = msgs.map((msg) => {
       if (msg.role === "assistant") {
         try {
           const parsed = JSON.parse(msg.content);
-          if (parsed.schema && parsed.schema.length > 0) {
+          if (parsed.schema && parsed.schema.tables && parsed.schema.tables.length > 0) {
             latestSchema = parsed.schema;
           }
           return {
             role: "assistant" as const,
             content: parsed.message || msg.content,
-            schema: parsed.schema || [],
+            schema: parsed.schema || { tables: [] },
           };
-        } catch (e) {
-          return { role: msg.role, content: msg.content, schema: [] };
+        } catch (error) {
+          console.error("Error parsing assistant message:", error);
+          return { role: msg.role, content: msg.content, schema: { tables: [] } };
         }
       }
       return { role: msg.role, content: msg.content };
@@ -268,7 +284,7 @@ export default function ProjectPage() {
       // Step 3: Create AI message with structured content
       const aiMessageContent = JSON.stringify({
         message: data.message,
-        schema: data.schema || [],
+        schema: data.schema || { tables: [] },
       });
 
       const aiMessage: Message = {
@@ -287,7 +303,7 @@ export default function ProjectPage() {
         const newMessages = [
           ...prev.slice(0, index),
           { role: "user" as const, content: editedMessage.content as string },
-          { role: "assistant" as const, content: data.message, schema: data.schema || [] },
+          { role: "assistant" as const, content: data.message, schema: data.schema || { tables: [] } },
         ];
         return newMessages.slice(-2);
       });
@@ -319,23 +335,23 @@ export default function ProjectPage() {
   };
 
   // Merge new schema with existing schema
-  const mergeSchemas = (existingSchema: any[], newSchema: any[]): any[] => {
-    const mergedSchema = [...existingSchema];
+  const mergeSchemas = (existingSchema: Schema, newSchema: Schema): Schema => {
+    const mergedSchema = { ...existingSchema };
 
-    newSchema.forEach((newTable) => {
-      const existingTableIndex = mergedSchema.findIndex(
+    newSchema.tables.forEach((newTable) => {
+      const existingTableIndex = mergedSchema.tables.findIndex(
         (table) => table.name === newTable.name
       );
 
       if (existingTableIndex === -1) {
         // If the table doesn't exist, add it to the schema
-        mergedSchema.push(newTable);
+        mergedSchema.tables.push(newTable);
       } else {
         // If the table exists, merge the columns
-        const existingTable = mergedSchema[existingTableIndex];
+        const existingTable = mergedSchema.tables[existingTableIndex];
         const mergedColumns = [...existingTable.columns];
 
-        newTable.columns.forEach((newColumn: any) => {
+        newTable.columns.forEach((newColumn) => {
           const existingColumnIndex = mergedColumns.findIndex(
             (col) => col.name === newColumn.name
           );
@@ -347,7 +363,7 @@ export default function ProjectPage() {
         });
 
         // Update the table with merged columns
-        mergedSchema[existingTableIndex] = {
+        mergedSchema.tables[existingTableIndex] = {
           ...existingTable,
           columns: mergedColumns,
         };
@@ -405,7 +421,7 @@ export default function ProjectPage() {
       // Create AI message with structured content
       const aiMessageContent = JSON.stringify({
         message: data.message,
-        schema: data.schema || [],
+        schema: data.schema || { tables: [] },
       });
 
       const aiMessage: Message = {
@@ -424,14 +440,14 @@ export default function ProjectPage() {
           {
             role: "assistant" as const,
             content: data.message,
-            schema: data.schema || [],
+            schema: data.schema || { tables: [] },
           },
         ];
         return newMessages.slice(-2);
       });
 
       // Update current schema if new schema is provided
-      if (data.schema && data.schema.length > 0) {
+      if (data.schema && data.schema.tables && data.schema.tables.length > 0) {
         // Merge new schema with existing schema
         const mergedSchema = mergeSchemas(currentSchema, data.schema);
         setCurrentSchema(mergedSchema);
@@ -473,11 +489,11 @@ export default function ProjectPage() {
   };
 
   // Generate a project name based on schema
-  const generateProjectName = (schema: any[]): string => {
-    if (!schema || schema.length === 0) return "Database Schema Project";
+  const generateProjectName = (schema: Schema): string => {
+    if (!schema.tables || schema.tables.length === 0) return "Database Schema Project";
 
     // Get the main entity names
-    const entityNames = schema.map((table) => table.name);
+    const entityNames = schema.tables.map((table) => table.name);
 
     if (entityNames.length === 1) {
       return `${entityNames[0]} Database`;
@@ -579,9 +595,9 @@ export default function ProjectPage() {
       <main className="flex-1 flex flex-col px-4 py-6">
         <div className="w-full max-w-3xl mx-auto flex-1">
           {/* Schema Visualization at the top */}
-          {currentSchema && currentSchema.length > 0 && (
+          {currentSchema.tables && currentSchema.tables.length > 0 && (
             <div className="mb-6">
-              <SchemaVisualization tables={currentSchema} className="border border-gray-300 rounded-lg" />
+              <SchemaVisualization tables={currentSchema.tables} className="border border-gray-300 rounded-lg" />
             </div>
           )}
 
