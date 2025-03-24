@@ -2,8 +2,8 @@
 "use client"; // Mark this component as a Client Component
 
 import { useState } from "react";
-import { Star, MapPin, Menu, ArrowUp } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Star, Menu, ArrowUp } from "lucide-react";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
 
 export default function NewProject() {
   // State for the input value
