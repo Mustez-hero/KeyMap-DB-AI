@@ -14,7 +14,10 @@ interface ProjectSchema {
 }
 
 // GET Handler: Fetch a project by ID
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } } // Correct type for App Router
+) {
   const { id } = params
   console.log(`Received GET request for project ID: ${id}`)
 
@@ -43,7 +46,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // PUT Handler: Update a project by ID
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(
+  req: Request,
+  { params }: { params: { id: string } } // Correct type for App Router
+) {
   const { id } = params
   console.log(`Received PUT request for project ID: ${id}`)
 
@@ -86,7 +92,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 }
 
 // DELETE Handler: Delete a project by ID
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } } // Correct type for App Router
+) {
   const { id } = params
   console.log(`Received DELETE request for project ID: ${id}`)
 
