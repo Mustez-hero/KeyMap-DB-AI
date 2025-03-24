@@ -9,20 +9,23 @@ const uri = process.env.MONGODB_URI;
 let client: MongoClient;
 let clientPromise: Promise<MongoClient>;
 
-// Extend the global object to store the MongoDB client promise
+// Extend globalThis without using var
 declare global {
-  var _mongoClientPromise: Promise<MongoClient> | undefined;
+  interface Global {
+    _mongoClientPromise?: Promise<MongoClient>;
+  }
 }
 
+// Use globalThis but ensure we don't use `var`
+const globalWithMongo = global as typeof global & { _mongoClientPromise?: Promise<MongoClient> };
+
 if (process.env.NODE_ENV === "development") {
-  // Use a global variable to preserve the MongoDB connection during hot reloads in development
-  if (!globalThis._mongoClientPromise) {
+  if (!globalWithMongo._mongoClientPromise) {
     client = new MongoClient(uri);
-    globalThis._mongoClientPromise = client.connect();
+    globalWithMongo._mongoClientPromise = client.connect();
   }
-  clientPromise = globalThis._mongoClientPromise;
+  clientPromise = globalWithMongo._mongoClientPromise;
 } else {
-  // In production, create a new MongoDB connection
   client = new MongoClient(uri);
   clientPromise = client.connect();
 }
