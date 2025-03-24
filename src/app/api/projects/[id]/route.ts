@@ -14,7 +14,7 @@ interface ProjectSchema {
 }
 
 // GET Handler: Fetch a project by ID
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: { [key: string]: string | string[] } }) {
   const { id } = params
   console.log(`Received GET request for project ID: ${id}`)
 
@@ -23,7 +23,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const db = client.db("keymap")
 
     // Convert the string ID to an ObjectId
-    const objectId = new ObjectId(id)
+    const objectId = new ObjectId(id as string)
 
     console.log(`Querying MongoDB for project with _id: ${objectId}`)
 
@@ -43,7 +43,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // PUT Handler: Update a project by ID
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: { [key: string]: string | string[] } }) {
   const { id } = params
   console.log(`Received PUT request for project ID: ${id}`)
 
@@ -70,7 +70,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const client = await clientPromise
     const db = client.db("keymap")
 
-    const objectId = new ObjectId(id)
+    const objectId = new ObjectId(id as string)
 
     const result = await db.collection("projects").updateOne({ _id: objectId }, { $set: updateData })
 
@@ -86,7 +86,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 }
 
 // DELETE Handler: Delete a project by ID
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: { [key: string]: string | string[] } }) {
   const { id } = params
   console.log(`Received DELETE request for project ID: ${id}`)
 
@@ -95,7 +95,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     const db = client.db("keymap")
 
     // Convert the string ID to an ObjectId
-    const objectId = new ObjectId(id)
+    const objectId = new ObjectId(id as string)
 
     console.log(`Attempting to delete project with _id: ${objectId}`)
 
