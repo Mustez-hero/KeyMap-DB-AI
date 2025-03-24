@@ -72,8 +72,8 @@ export async function POST(req: Request) {
     const { messages, isInitial, existingSchema, projectId } = (await req.json()) as {
       messages: { role: string; content: string }[];
       isInitial?: boolean;
-      existingSchema?: Table[]; // Add this to receive the existing schema
-      projectId?: string; // Add this to receive the project ID
+      existingSchema?: Table[];
+      projectId?: string;
     };
 
     // Validate the request body
@@ -86,21 +86,19 @@ export async function POST(req: Request) {
     const userInputLower = userInput.toLowerCase();
 
     // Check message type for optimized response
-    const isGreeting = /^(hi|hello|hey|greetings|howdy)/.test(userInputLower);
+    const isGreeting = /^(hi|hello|hey|greetings|howdy)/i.test(userInputLower);
     const isGeneralQuestion =
-      /^(what|how|why|when|where|who|can you|could you|would you|is there|are there|do you|explain|define)/.test(
+      /^(what|how|why|when|where|who|can you|could you|would you|is there|are there|do you|explain|define)/i.test(
         userInputLower,
       );
     const isDatabaseRequest = /(database|schema|table|field|column|entity|model|collection|document|record)/i.test(
       userInput,
     );
     const isHelpful = /(thank|thanks|good|great|excellent|awesome|nice|helpful)/i.test(userInputLower);
-
-    // Check if the user is describing a schema need (even without action words)
     const isSchemaDescription =
       /(manage|track|log|store|organize|handle|employees|companies|roles|activities|projects|tasks)/i.test(userInput);
 
-    // If it's a schema description or action request, and there's an existing schema, use it
+    // Initialize schema from existing or empty array
     let schema: Table[] = existingSchema || [];
 
     // Handle simple responses without calling the API
@@ -109,7 +107,7 @@ export async function POST(req: Request) {
         {
           message: "Hello! I'm your database assistant. What kind of database schema do you need help with?",
           projectName: isInitial ? "Database Schema Project" : undefined,
-          schema: schema, // Return the existing schema if any
+          schema: isInitial ? schema : undefined,
         },
         { status: 200 },
       );
@@ -120,7 +118,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           message: "You're welcome! Need help with anything else?",
-          schema: schema, // Return the existing schema if any
+          schema: undefined,
         },
         { status: 200 },
       );
@@ -128,7 +126,6 @@ export async function POST(req: Request) {
 
     // Handle general questions about databases
     if (isGeneralQuestion && !isDatabaseRequest) {
-      // Check if the question is specifically about schemas
       const isSchemaQuestion = /(what is a schema|define schema|explain schema)/i.test(userInputLower);
 
       if (isSchemaQuestion) {
@@ -136,13 +133,14 @@ export async function POST(req: Request) {
           {
             message:
               "A database schema is the structure that defines how data is organized in a database. It includes tables/collections, fields/columns, relationships, and constraints.",
-            schema: schema, // Return the existing schema if any
+            schema: undefined,
           },
           { status: 200 },
         );
       }
 
-      const generalQuestionPrompt = `<s>[INST] You are a database expert. Answer this question: "${userInput}". Be brief and clear (max 3 sentences). Use simple language. [/INST]`;
+      // For other general questions, generate a dynamic response
+      const generalQuestionPrompt = `<s>[INST] You are a database expert. Answer this question concisely: "${userInput}" (max 2-3 sentences). Use simple language. [/INST]`;
 
       const response = await fetch(HF_API_URL, {
         method: "POST",
@@ -166,7 +164,7 @@ export async function POST(req: Request) {
       }
 
       const responseData = await response.json();
-      let aiResponse = responseData[0]?.generated_text || "No response generated.";
+      let aiResponse = responseData[0]?.generated_text || "I couldn't generate a response. Could you rephrase your question?";
 
       // Extract only the new content after the prompt
       if (aiResponse.includes(generalQuestionPrompt)) {
@@ -179,15 +177,15 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           message: aiResponse,
-          schema: schema, // Return the existing schema if any
+          schema: undefined,
         },
         { status: 200 },
       );
     }
 
-    // If the user is describing a schema need or explicitly asking to generate/create something, generate tables
+    // Handle schema-related requests
     if (isSchemaDescription || isDatabaseRequest) {
-      // For schema requests or any other input, first analyze the entities and relationships
+      // First analyze the entities and relationships
       const analysisPrompt = `<s>[INST] You are a database expert. Analyze this request and identify the entities, attributes, and relationships:
 "${userInput}"
 
@@ -210,7 +208,7 @@ Ensure all entities have an id attribute.
           inputs: analysisPrompt,
           parameters: {
             max_new_tokens: 800,
-            temperature: 0.3, // Lower temperature for more precise analysis
+            temperature: 0.3,
             top_p: 0.95,
             do_sample: true,
           },
@@ -239,12 +237,19 @@ Ensure all entities have an id attribute.
         }
       } catch (e) {
         console.error("Error parsing entity analysis:", e);
+        return NextResponse.json(
+          {
+            message: "I had trouble understanding your request. Could you provide more specific details about the database schema you need?",
+            schema: schema,
+          },
+          { status: 200 },
+        );
       }
 
       // Convert entities to tables
       if (entityAnalysis.entities && entityAnalysis.entities.length > 0) {
         const newTables = entityAnalysis.entities.map((entity: Entity) => {
-          const hasId = entity.attributes.some((attr: Attribute) => attr.name === "id");
+          const hasId = entity.attributes.some((attr: Attribute) => attr.name.toLowerCase() === "id");
           const attributes = hasId ? entity.attributes : [{ name: "id", type: "uuid" }, ...entity.attributes];
 
           return {
@@ -253,7 +258,7 @@ Ensure all entities have an id attribute.
               return {
                 name: attr.name.toLowerCase().replace(/\s+/g, "_"),
                 type: attr.type || "varchar",
-                isPrimary: attr.name === "id",
+                isPrimary: attr.name.toLowerCase() === "id",
               };
             }),
           };
@@ -262,7 +267,7 @@ Ensure all entities have an id attribute.
         // Append new tables to the existing schema
         schema = [...schema, ...newTables];
 
-        // Handle relationships for the new tables
+        // Handle relationships
         if (entityAnalysis.relationships && entityAnalysis.relationships.length > 0) {
           entityAnalysis.relationships.forEach((rel: Relationship) => {
             const fromTable = schema.find((t: Table) => t.name === rel.from.toLowerCase().replace(/\s+/g, "_"));
@@ -317,17 +322,17 @@ Ensure all entities have an id attribute.
         }
       }
 
-      // Generate a dynamic response based on the schema
-      const dynamicResponse = `Here's the schema I generated based on your description. Does this look good?\n\n${schema
-        .map((table) => `Table: ${table.name}\nColumns: ${table.columns.map((col) => col.name).join(", ")}`)
-        .join("\n\n")}`;
+      // Generate a dynamic response
+      const dynamicResponse = `I've created a schema based on your request. Here's what I came up with:\n\n${schema
+        .map((table) => `• ${table.name} (${table.columns.map((col) => col.name).join(", ")})`)
+        .join("\n")}\n\nWould you like to make any adjustments?`;
 
-      // Generate a project name based on the schema (only if it's the first schema)
+      // Generate project name if this is the first schema
       let projectName = "Database Schema Project";
       if (!existingSchema || existingSchema.length === 0) {
         projectName = generateProjectName(schema);
 
-        // Update the project name in the database
+        // Update project name if projectId exists
         if (projectId) {
           await fetch(`/api/projects/${projectId}`, {
             method: "PUT",
@@ -342,23 +347,29 @@ Ensure all entities have an id attribute.
       return NextResponse.json(
         {
           message: dynamicResponse,
-          schema: schema, // Return the updated schema
-          projectName: projectName, // Return the generated project name
+          schema: schema,
+          projectName: projectName,
         },
         { status: 200 },
       );
     }
 
-    // If the request is not related to databases or schemas, return a default response
+    // Default response for unrelated requests
     return NextResponse.json(
       {
-        message: "I'm here to help with database schemas. Could you clarify your request?",
-        schema: schema, // Return the existing schema if any
+        message: "I specialize in database schemas. Could you tell me more about what you're trying to build?",
+        schema: undefined,
       },
       { status: 200 },
     );
   } catch (error) {
     console.error("Error:", error);
-    return NextResponse.json({ error: "An error occurred" }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "An error occurred while processing your request. Please try again.",
+        schema: undefined,
+      },
+      { status: 500 },
+    );
   }
 }
