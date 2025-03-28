@@ -106,7 +106,7 @@ The **Database Schema Assistant** is a web application that helps users design a
 
 ## Demo
 
-A live demo of the application is available at [https://database-schema-assistant.vercel.app](https://).
+A live demo of the application is available at [].
 
 ---
 
