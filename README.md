@@ -79,8 +79,7 @@ The **Database Schema Assistant** is a web application that helps users design a
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/your-username/database-schema-assistant.git
-   cd database-schema-assistant
+ git clone https://github.com/Mustez-hero/KeyMap-DB-AI.git
    ```
 
 2. **Install Dependencies**:
@@ -107,7 +106,7 @@ The **Database Schema Assistant** is a web application that helps users design a
 
 ## Demo
 
-A live demo of the application is available at [https://database-schema-assistant.vercel.app](https://database-schema-assistant.vercel.app).
+A live demo of the application is available at [https://database-schema-assistant.vercel.app](https://).
 
 ---
 
