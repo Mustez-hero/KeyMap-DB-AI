@@ -79,7 +79,7 @@ The **Database Schema Assistant** is a web application that helps users design a
 
 1. **Clone the Repository**:
    ```bash
- git clone https://github.com/Mustez-hero/KeyMap-DB-AI.git
+   git clone https://github.com/Mustez-hero/KeyMap-DB-AI.git
    ```
 
 2. **Install Dependencies**:
